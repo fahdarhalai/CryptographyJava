@@ -19,7 +19,7 @@ public class TrippleDES {
 		String cipherText = DES.encrypt(bloc, key1);
 		cipherText = DES.encrypt(cipherText, key2);
 		cipherText = DES.encrypt(cipherText, key1);
-		return "";
+		return cipherText;
 	}
 	
 	public static String EDE2(String bloc, String key1, String key2) throws Exception{
