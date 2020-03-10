@@ -1,9 +1,18 @@
 package SymetricCryptography;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.util.regex.Pattern;
+
 import javax.xml.bind.DatatypeConverter;
 
 public class DES {
+	public enum Algorithm{
+		ECB,
+		CBC
+	}
 	
 	static int[] initialPerm = { 58, 50, 42, 34, 26, 18, 10, 2, 
 					            60, 52, 44, 36, 28, 20, 12, 4, 
@@ -66,7 +75,7 @@ public class DES {
 				            19, 13, 30, 6, 
 				            22, 11, 4, 25 };
 	
-	static class Converter{
+	public static class Converter{
 		
 		static String stringToHex(String text) throws UnsupportedEncodingException {
 			return String.format("%x", new BigInteger(1, text.getBytes("UTF-8")));
@@ -89,8 +98,20 @@ public class DES {
 			return hexToBinary(stringToHex(text));
 		}
 		
-		static String binaryToString(String bin) throws UnsupportedEncodingException {
+		public static String binaryToString(String bin) throws UnsupportedEncodingException {
+			if(Pattern.matches("0*", bin)) {
+				return "";
+			}
 			return hexToString(binaryToHex(bin));
+		}
+		
+		static int binaryToInteger(String binary) {
+		    char[] numbers = binary.toCharArray();
+		    int result = 0;
+		    for(int i=numbers.length - 1; i>=0; i--)
+		        if(numbers[i]=='1')
+		            result += Math.pow(2, (numbers.length-i - 1));
+		    return result;
 		}
 		
 	}
@@ -119,7 +140,7 @@ public class DES {
 		//Number of key bits shifted per round
 		static int[] LS = { 1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1 };
 		
-		public static String dropParity(String key) throws Exception {
+		static String dropParity(String key) throws Exception {
 			if(key.length() != 64) throw new Exception("Key must be 64-bits of length");
 			
 			StringBuffer newKey = new StringBuffer();
@@ -147,15 +168,14 @@ public class DES {
 			int shift = LS[round];
 			
 			StringBuffer newHalf = new StringBuffer();
-			
 			for(int i=0; i<shift; i++) {
-				int first = half.charAt(0);
+				char first = half.charAt(0);
 				
 				newHalf.append(half.substring(1));
 				newHalf.append(first);
 				half = newHalf.toString();
+				newHalf.delete(0, 28);
 			}
-			
 			return half;
 		}
 		
@@ -171,7 +191,7 @@ public class DES {
 			for(int i=0; i<PC2.length; i++) {
 				int index = PC2[i];
 				
-				newKey.append(key.charAt(index));
+				newKey.append(key.charAt(index-1));
 			}
 			
 			return newKey.toString();
@@ -181,13 +201,14 @@ public class DES {
 			if(key.length() != 56) throw new Exception("Key must be 56-bits of length");
 			
 			String[] CD = splitInHalf(key);
-			String s = groupKey(shiftKey(CD[0], round), shiftKey(CD[1], round));
-			
+			String s1 = shiftKey(CD[0], round);
+			String s2 = shiftKey(CD[1], round);
+			String s = groupKey(s1, s2);
 			return compressKey(s);
 		}
 		
 	}
-	
+	 
 	public static String permute(String bloc) throws Exception{
 		if(bloc.length() != 64) throw new Exception("Bloc must be 64-bits of length");
 		
@@ -196,7 +217,7 @@ public class DES {
 		for(int i=0; i<initialPerm.length; i++) {
 			int index = initialPerm[i];
 			
-			newBloc.append(bloc.charAt(index));
+			newBloc.append(bloc.charAt(index-1));
 		}
 		
 		return newBloc.toString();
@@ -210,7 +231,7 @@ public class DES {
 		for(int i=0; i<initialPermInverse.length; i++) {
 			int index = initialPermInverse[i];
 			
-			newBloc.append(bloc.charAt(index));
+			newBloc.append(bloc.charAt(index-1));
 		}
 		
 		return newBloc.toString();
@@ -280,11 +301,21 @@ public class DES {
 	static String substitute(String part, int index) throws Exception{
 		if(part.length() != 6) throw new Exception("Sub-bloc must be 6-bits of length");
 		
-		int row = (int)part.charAt(0) + (int)part.charAt(5);
+		StringBuffer helper = new StringBuffer();
+		helper.append(part.charAt(0));
+		helper.append(part.charAt(5));
+		
+		int row = Converter.binaryToInteger(helper.toString());
 		int col = Integer.parseInt(part.substring(1,5), 2);
+		
 		int res = sBox[index][row*16 + col];
 		
-		return Integer.toBinaryString(res);
+		StringBuffer result = new StringBuffer(Integer.toBinaryString(res));
+		while(result.length()<4) {
+			result.insert(0, "0");
+		}
+		
+		return result.toString();
 	}
 	
 	static String substituteBloc(String bloc) throws Exception{
@@ -297,7 +328,6 @@ public class DES {
 			String part = bloc.substring(i, i+6);
 			newBloc.append(substitute(part, index++));
 		}
-		
 		return newBloc.toString();
 	}
 	
@@ -309,7 +339,7 @@ public class DES {
 		for(int i=0; i<blocPerm.length; i++) {
 			int index = blocPerm[i];
 			
-			newBloc.append(bloc.charAt(index));
+			newBloc.append(bloc.charAt(index-1));
 		}
 		
 		return newBloc.toString();
@@ -326,27 +356,101 @@ public class DES {
 		return groupBloc(LR[1], R);
 	}
 
-	static String iterateOverRounds(String bloc, String key) throws Exception{
+	static String encrytAllRounds(String bloc, String key) throws Exception{
 		if(bloc.length() != 64) throw new Exception("Bloc must be 64-bits of length");
 		if(key.length() != 64) throw new Exception("Key must be 64-bits of length");
 		
 		key = KeyGenerator.dropParity(key);
-		
+		String roundKey = "";
 		for(int i=0; i<16; i++) {
-			key = KeyGenerator.getRoundKey(key, i);
-			bloc = encryptRound(bloc, key);
+			roundKey = KeyGenerator.getRoundKey(key, i);
+			bloc = encryptRound(bloc, roundKey);
 		}
+		
+		return bloc;
+	}
+
+	static String encrypt(String bloc, String key) throws Exception{
+		String myBloc = permute(bloc);
+
+		myBloc = encrytAllRounds(myBloc, key);
+
+		myBloc = permuteInverse(myBloc);
+		return myBloc;
+	}
+	
+	static String decryptRound(String bloc, String key) throws Exception{
+		if(bloc.length() != 64) throw new Exception("Bloc must be 64-bits of length");
+		if(key.length() != 48) throw new Exception("Key must be 48-bits of length");
 		
 		return "";
 	}
 
-	static String encrypt(String bloc, String key) throws Exception{
-		bloc = permute(bloc);
+	static String decryptAllRounds(String bloc, String key) throws Exception{
+		if(bloc.length() != 64) throw new Exception("Bloc must be 64-bits of length");
+		if(key.length() != 64) throw new Exception("Key must be 64-bits of length");
 		
-		bloc = iterateOverRounds(bloc, key);
+		return "";
+	}
+	
+	public static String decrypt(String bloc, String key) throws Exception{
 		
-		bloc = permuteInverse(bloc);
+		return "";
+	}
+
+	public static String encrypt(File file, String key, Algorithm algorithm) throws Exception{
 		
-		return bloc;
+		try (InputStream stream = new FileInputStream(file)) {
+			StringBuffer result = new StringBuffer();
+			StringBuffer sb = new StringBuffer();
+			
+			byte[] array = new byte[8];
+			int data = stream.read(array, 0, 8);
+			
+			if(algorithm == Algorithm.ECB) {
+				while(data != -1) {
+					for(int i=0; i<8; i++) {
+						StringBuffer helper = new StringBuffer(Integer.toBinaryString(array[i]));
+						
+						while(helper.length() < 8) {
+							helper.insert(0, "0");
+						}
+						sb.append(helper.toString());
+					}
+					
+					for(int i=0; i<8; i++) {
+						array[i] = 0;
+					}
+					
+					result.append(DES.encrypt(sb.toString(), key));
+					
+					sb.delete(0, 64);
+					data = stream.read(array, 0, 8);
+				}
+			} else if(algorithm == Algorithm.CBC){
+				String C0 = "0101010101010101010101010101010101010101010101010101010101010101";
+				while(data != -1) {
+					for(int i=0; i<8; i++) {
+						StringBuffer helper = new StringBuffer(Integer.toBinaryString(array[i]));
+						
+						while(helper.length() < 8) {
+							helper.insert(0, "0");
+						}
+						sb.append(helper.toString());
+					}
+					
+					for(int i=0; i<8; i++) {
+						array[i] = 0;
+					}
+					
+					result.append(DES.encrypt(sb.toString(), key));
+					
+					sb.delete(0, 64);
+					data = stream.read(array, 0, 8);
+				}
+			}
+			
+			return result.toString();
+		}
 	}
 }
