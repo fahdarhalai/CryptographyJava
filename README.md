@@ -1,4 +1,4 @@
-# CryptogtaphyJava
+# Cryptogtaphy Algorithms in Java
 This repository contains a set of cryptography algorithms implemented in Java Language.
 <ul>
   <li>Classic Ciphers</li>
