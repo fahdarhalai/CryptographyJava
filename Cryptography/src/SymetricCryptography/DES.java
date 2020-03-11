@@ -1,12 +1,9 @@
 package SymetricCryptography;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
-import java.util.HashMap;
 import java.util.regex.Pattern;
 
 import javax.xml.bind.DatatypeConverter;
