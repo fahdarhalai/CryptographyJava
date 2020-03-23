@@ -541,6 +541,7 @@ public class DES {
 					break;
 				}
 			}
+			
 			while ((intChar = r.read()) != -1) {
 				sb.append((char) intChar);
 				if(sb.length() == 64 ) {
