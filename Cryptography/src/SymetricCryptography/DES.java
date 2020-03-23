@@ -1,7 +1,10 @@
 package SymetricCryptography;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.util.regex.Pattern;
@@ -9,7 +12,7 @@ import java.util.regex.Pattern;
 import javax.xml.bind.DatatypeConverter;
 
 public class DES {
-	public enum Algorithm{
+	public static enum Algorithm{
 		ECB,
 		CBC
 	}
@@ -73,6 +76,8 @@ public class DES {
 				            32, 27, 3, 9, 
 				            19, 13, 30, 6, 
 				            22, 11, 4, 25 };
+	
+	static String IV = "0101010101010101010101010101010101010101010101010101010101010101";
 	
 	public static class Converter{
 		
@@ -432,7 +437,7 @@ public class DES {
 		return bloc;
 	}
 	
-	public static String encrypt(String bloc, String key) throws Exception{
+	static String encrypt(String bloc, String key) throws Exception{
 		String myBloc = permute(bloc);
 
 		myBloc = encrytAllRounds(myBloc, key);
@@ -442,7 +447,7 @@ public class DES {
 		return myBloc;
 	}
 
-	public static String decrypt(String bloc, String key) throws Exception{
+	static String decrypt(String bloc, String key) throws Exception{
 		String myBloc = permute(bloc);
 
 		myBloc = decryptAllRounds(myBloc, key);
@@ -460,30 +465,56 @@ public class DES {
 			
 			byte[] array = new byte[8];
 			int data = stream.read(array, 0, 8);
+			String prev = "";
 			
-			if(algorithm == Algorithm.ECB) {
-				while(data != -1) {
-					for(int i=0; i<8; i++) {
-						StringBuffer helper = new StringBuffer(Integer.toBinaryString(array[i]));
-						
-						while(helper.length() < 8) {
-							helper.insert(0, "0");
-						}
-						sb.append(helper.toString());
+			if(data != -1) {
+				for(int i=0; i<8; i++) {
+					StringBuffer helper = new StringBuffer(Integer.toBinaryString(array[i]));
+					
+					while(helper.length() < 8) {
+						helper.insert(0, "0");
 					}
-					
-					for(int i=0; i<8; i++) {
-						array[i] = 0;
-					}
-					
-					result.append(DES.encrypt(sb.toString(), key));
-					
-					sb.delete(0, 64);
-					data = stream.read(array, 0, 8);
+					sb.append(helper.toString());
 				}
-			} else if(algorithm == Algorithm.CBC){
-//				String C0 = "0101010101010101010101010101010101010101010101010101010101010101";
 				
+				for(int i=0; i<8; i++) {
+					array[i] = 0;
+				}
+				
+				if(algorithm == Algorithm.ECB) {
+					result.append(DES.encrypt(sb.toString(), key));
+				}else if(algorithm == Algorithm.CBC) {
+					prev = DES.encrypt(XOR(sb.toString(), IV), key);
+					result.append(prev);
+				}
+				
+				sb.delete(0, 64);
+				data = stream.read(array, 0, 8);
+			}
+			
+			while(data != -1) {
+				for(int i=0; i<8; i++) {
+					StringBuffer helper = new StringBuffer(Integer.toBinaryString(array[i]));
+					
+					while(helper.length() < 8) {
+						helper.insert(0, "0");
+					}
+					sb.append(helper.toString());
+				}
+				
+				for(int i=0; i<8; i++) {
+					array[i] = 0;
+				}
+				
+				if(algorithm == Algorithm.ECB) {
+					result.append(DES.encrypt(sb.toString(), key));
+				}else if(algorithm == Algorithm.CBC) {
+					prev = DES.encrypt(XOR(sb.toString(), prev),key);
+					result.append(prev);
+				}
+				
+				sb.delete(0, 64);
+				data = stream.read(array, 0, 8);
 			}
 			
 			return result.toString();
@@ -491,37 +522,36 @@ public class DES {
 	}
 	
 	public static String decrypt(File file, String key, Algorithm algorithm) throws Exception{
-		
-		try (InputStream stream = new FileInputStream(file)) {
+		try (Reader r = new BufferedReader(new InputStreamReader(new FileInputStream(file)))){
 			StringBuffer result = new StringBuffer();
 			StringBuffer sb = new StringBuffer();
+			String prev = "";
 			
-			byte[] array = new byte[8];
-			int data = stream.read(array, 0, 8);
-			
-			if(algorithm == Algorithm.ECB) {
-				while(data != -1) {
-					for(int i=0; i<8; i++) {
-						StringBuffer helper = new StringBuffer(Integer.toBinaryString(array[i]));
-						
-						while(helper.length() < 8) {
-							helper.insert(0, "0");
-						}
-						sb.append(helper.toString());
+			int intChar;
+			while((intChar = r.read()) != -1) {
+				sb.append((char) intChar);
+				if(sb.length() == 64 ) {
+					if(algorithm == Algorithm.ECB) {
+						result.append(DES.decrypt(sb.toString(), key));
+					}else if(algorithm == Algorithm.CBC) {
+						prev = sb.toString();
+						result.append(XOR(DES.decrypt(sb.toString(), key), IV));
 					}
-					
-					for(int i=0; i<8; i++) {
-						array[i] = 0;
-					}
-					System.out.println(sb.toString());
-					result.append(DES.decrypt(sb.toString(), key));
-					
 					sb.delete(0, 64);
-					data = stream.read(array, 0, 8);
+					break;
 				}
-			} else if(algorithm == Algorithm.CBC){
-//				String C0 = "0101010101010101010101010101010101010101010101010101010101010101";
-				
+			}
+			while ((intChar = r.read()) != -1) {
+				sb.append((char) intChar);
+				if(sb.length() == 64 ) {
+					if(algorithm == Algorithm.ECB) {
+						result.append(DES.decrypt(sb.toString(), key));
+					}else if(algorithm == Algorithm.CBC) {
+						result.append(XOR(DES.decrypt(sb.toString(), key), prev));
+						prev = sb.toString();
+					}
+					sb.delete(0, 64);
+				}
 			}
 			
 			return result.toString();
