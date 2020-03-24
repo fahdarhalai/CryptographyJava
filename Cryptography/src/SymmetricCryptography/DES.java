@@ -5,11 +5,8 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
-import java.util.regex.Pattern;
 
-import javax.xml.bind.DatatypeConverter;
+import Tools.Converter;
 
 public class DES {
 	public static enum Algorithm{
@@ -78,47 +75,6 @@ public class DES {
 				            22, 11, 4, 25 };
 	
 	static String IV = "0101010101010101010101010101010101010101010101010101010101010101";
-	
-	public static class Converter{
-		
-		static String stringToHex(String text) throws UnsupportedEncodingException {
-			return String.format("%x", new BigInteger(1, text.getBytes("UTF-8")));
-		}
-		
-		static String hexToString(String hex) throws UnsupportedEncodingException {
-			byte[] bytes = DatatypeConverter.parseHexBinary(hex);
-			return new String(bytes, "UTF-8");
-		}
-		
-		static String hexToBinary(String hex) {
-			return new BigInteger(hex, 16).toString(2);
-		}
-		
-		static String binaryToHex(String bin) {
-			return new BigInteger(bin, 2).toString(16).toUpperCase();
-		}
-		
-		public static String stringToBinary(String text) throws UnsupportedEncodingException {
-			return hexToBinary(stringToHex(text));
-		}
-		
-		public static String binaryToString(String bin) throws UnsupportedEncodingException {
-			if(Pattern.matches("0*", bin)) {
-				return "";
-			}
-			return hexToString(binaryToHex(bin));
-		}
-		
-		static int binaryToInteger(String binary) {
-		    char[] numbers = binary.toCharArray();
-		    int result = 0;
-		    for(int i=numbers.length - 1; i>=0; i--)
-		        if(numbers[i]=='1')
-		            result += Math.pow(2, (numbers.length-i - 1));
-		    return result;
-		}
-		
-	}
 	
 	static class KeyGenerator{
 		//Key Parity Drop with permutation 
@@ -340,7 +296,7 @@ public class DES {
 		helper.append(part.charAt(0));
 		helper.append(part.charAt(5));
 		
-		int row = Converter.binaryToInteger(helper.toString());
+		int row = (int)Converter.binaryToInteger(helper.toString());
 		int col = Integer.parseInt(part.substring(1,5), 2);
 		int res = sBox[index][row*16 + col];
 		
@@ -437,6 +393,7 @@ public class DES {
 		return bloc;
 	}
 	
+	// Encrtypt bloc of 64 bits
 	static String encrypt(String bloc, String key) throws Exception{
 		String myBloc = permute(bloc);
 
@@ -446,7 +403,8 @@ public class DES {
 		
 		return myBloc;
 	}
-
+	
+	// Decrypt bloc of 64 bits
 	static String decrypt(String bloc, String key) throws Exception{
 		String myBloc = permute(bloc);
 
@@ -457,6 +415,7 @@ public class DES {
 		return myBloc;
 	}
 	
+	// Encrypt a text file
 	public static String encrypt(File file, String key, Algorithm algorithm) throws Exception{
 		
 		try (InputStream stream = new FileInputStream(file)) {
@@ -521,6 +480,7 @@ public class DES {
 		}
 	}
 	
+	// Decrypt a text file
 	public static String decrypt(File file, String key, Algorithm algorithm) throws Exception{
 		try (Reader r = new BufferedReader(new InputStreamReader(new FileInputStream(file)))){
 			StringBuffer result = new StringBuffer();

@@ -57,6 +57,7 @@ public class TripleDES {
 		return DES.decrypt(DES.encrypt(DES.decrypt(bloc, key1), key2), key1);
 	}
 	
+	// Encryption function
 	public static String encrypt(File file, String key1, String key2, String key3, EncryptMode mode) throws Exception {
 		try (InputStream stream = new FileInputStream(file)) {
 			StringBuffer result = new StringBuffer();
@@ -97,6 +98,7 @@ public class TripleDES {
 		}
 	}
 	
+	// Decryption function
 	public static String decrypt(File file, String key1, String key2, String key3, DecryptMode mode) throws Exception {
 		try (Reader r = new BufferedReader(new InputStreamReader(new FileInputStream(file)))){
 			StringBuffer result = new StringBuffer();
