@@ -1,4 +1,4 @@
-package SymetricCryptography;
+package SymmetricCryptography;
 
 public class Blowfish {
 
