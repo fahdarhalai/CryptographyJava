@@ -228,7 +228,7 @@ public class Blowfish {
             "be5466cf", "34e90c6c", "c0ac29b7", "c97c50dd", "3f84d5b5", 
             "b5470917", "9216d5d9", "8979fb1b" }; 
 	
-	public static void generateKey(String key) throws Exception{
+	static void generateKey(String key) throws Exception{
 		if(key.length() < 32 || key.length() > 448) throw new Exception("Key must be from 32 up to 448 bits of length");
 		
 		int j = 0;
@@ -342,7 +342,7 @@ public class Blowfish {
 		return res;
 	}
 	
-	public static String postProcessEncryption(String bloc) throws Exception{
+	static String postProcessEncryption(String bloc) throws Exception{
 		if(bloc.length() != 64) throw new Exception("Bloc must be 64 bits of length");
 		
 		String[] half = splitInHalf(bloc);
@@ -366,7 +366,7 @@ public class Blowfish {
 		return groupBloc(half[0], half[1]);
 	}
 	
-	public static String postProcessDecryption(String bloc) throws Exception{
+	static String postProcessDecryption(String bloc) throws Exception{
 		if(bloc.length() != 64) throw new Exception("Bloc must be 64 bits of length");
 		
 		String[] half = splitInHalf(bloc);
