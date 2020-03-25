@@ -6,4 +6,4 @@ This repository contains a set of cryptography algorithms implemented in Java La
   - Tripple DES
   - Blowfish
   - Advanced Encryption Standard
-- Antisymmetric Ciphers
+- Asymmetric Ciphers
