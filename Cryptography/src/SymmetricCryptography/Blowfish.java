@@ -1,6 +1,11 @@
 package SymmetricCryptography;
 
-import javax.crypto.KeyGenerator;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 
 import Tools.Converter;
 
@@ -223,7 +228,7 @@ public class Blowfish {
             "be5466cf", "34e90c6c", "c0ac29b7", "c97c50dd", "3f84d5b5", 
             "b5470917", "9216d5d9", "8979fb1b" }; 
 	
-	static void generateKey(String key) throws Exception{
+	public static void generateKey(String key) throws Exception{
 		if(key.length() < 32 || key.length() > 448) throw new Exception("Key must be from 32 up to 448 bits of length");
 		
 		int j = 0;
@@ -337,11 +342,10 @@ public class Blowfish {
 		return res;
 	}
 	
-	static String postProcessEncryption(String bloc) throws Exception{
+	public static String postProcessEncryption(String bloc) throws Exception{
 		if(bloc.length() != 64) throw new Exception("Bloc must be 64 bits of length");
 		
 		String[] half = splitInHalf(bloc);
-		String helper = half[0];
 		
 		String binPbox1 = Converter.hexToBinary(Pbox[16]);
 		String binPbox2 = Converter.hexToBinary(Pbox[17]);
@@ -353,6 +357,8 @@ public class Blowfish {
 		while(binPbox2.length() < 32) {
 			binPbox2 = "0" + binPbox2;
 		}
+		
+		String helper = half[0];
 		
 		half[0] = XOR(half[1], binPbox2);
 		half[1] = XOR(helper, binPbox1);
@@ -360,14 +366,13 @@ public class Blowfish {
 		return groupBloc(half[0], half[1]);
 	}
 	
-	static String postProcessDecryption(String bloc) throws Exception{
+	public static String postProcessDecryption(String bloc) throws Exception{
 		if(bloc.length() != 64) throw new Exception("Bloc must be 64 bits of length");
 		
 		String[] half = splitInHalf(bloc);
-		String helper = half[0];
 		
-		String binPbox1 = Converter.hexToBinary(Pbox[16]);
-		String binPbox2 = Converter.hexToBinary(Pbox[17]);
+		String binPbox1 = Converter.hexToBinary(Pbox[0]);
+		String binPbox2 = Converter.hexToBinary(Pbox[1]);
 		
 		while(binPbox1.length() < 32) {
 			binPbox1 = "0" + binPbox1;
@@ -376,6 +381,8 @@ public class Blowfish {
 		while(binPbox2.length() < 32) {
 			binPbox2 = "0" + binPbox2;
 		}
+		
+		String helper = half[0];
 		
 		half[0] = XOR(half[1], binPbox1);
 		half[1] = XOR(helper, binPbox2);
@@ -411,12 +418,12 @@ public class Blowfish {
 			binPbox = "0" + binPbox;
 		}
 		
-		String helper = half[0];
+		String helper = half[1];
 		
-		half[0] = XOR(half[1], binPbox);
-		half[1] = XOR(F(half[1]), helper);
+		half[1] = XOR(half[0], binPbox);
+		half[0] = XOR(F(half[1]), helper);
 		
-		return groupBloc(half[1], half[0]);
+		return groupBloc(half[0], half[1]);
 	}
 	
 	static String encryptAllRounds(String bloc) throws Exception{
@@ -435,14 +442,14 @@ public class Blowfish {
 		
 		String resBloc = bloc;
 		
-		for(int i=15; i>-1; i--) {
+		for(int i=17; i>1; i--) {
 			resBloc = decryptRound(resBloc, i);
 		}
 		
 		return resBloc;
 	}
 	
-	static String encrypt(String bloc) throws Exception{
+	public static String encrypt(String bloc) throws Exception{
 		if(bloc.length() != 64) throw new Exception("Bloc must be 64 bits of length");
 		
 		String result = postProcessEncryption(encryptAllRounds(bloc));
@@ -450,22 +457,82 @@ public class Blowfish {
 		return result;
 	}
 	
-	static String decrypt(String bloc) throws Exception{
+	public static String decrypt(String bloc) throws Exception{
 		if(bloc.length() != 64) throw new Exception("Bloc must be 64 bits of length");
 		
-		String result = decryptAllRounds(postProcessDecryption(bloc));
+		String result = postProcessDecryption(decryptAllRounds(bloc));
 		
 		return result;
 	}
 	
-	public static void main(String[] args) throws Exception {
-		String key = "1011001110010100011011110001000100010011100101000001101111000100010001000010011";
-		String bloc = "0100100001100101011011000110110001101111010101110110111100110001";
+	public static String encrypt(File file, String key) throws Exception{
+		if(key.length() < 32 || key.length() > 448) throw new Exception("Key must be from 32 up to 448 bits of length");
 		
-		generateKey(key);
+		String[] p = { "243f6a88", "85a308d3", "13198a2e", "03707344", "a4093822", 
+	            "299f31d0", "082efa98", "ec4e6c89", "452821e6", "38d01377", 
+	            "be5466cf", "34e90c6c", "c0ac29b7", "c97c50dd", "3f84d5b5", 
+	            "b5470917", "9216d5d9", "8979fb1b" };
+		Pbox = p;
 		
-		System.out.println(decrypt(encrypt(bloc)));
-		
+		try(InputStream stream = new FileInputStream(file)){
+			generateKey(key);
+			
+			StringBuffer result = new StringBuffer();
+			StringBuffer sb = new StringBuffer();
+			
+			byte[] array = new byte[8];
+			int data = stream.read(array, 0, 8);
+			
+			while(data != -1) {
+				for(int i=0; i<8; i++) {
+					StringBuffer helper = new StringBuffer(Integer.toBinaryString(array[i]));
+					
+					while(helper.length() < 8) {
+						helper.insert(0, "0");
+					}
+					
+					sb.append(helper.toString());
+				}
+				
+				for(int i=0; i<8; i++) {
+					array[i] = 0;
+				}
+				
+				result.append(encrypt(sb.toString()));
+				
+				sb.delete(0, 64);
+				data = stream.read(array, 0, 8);
+			}
+			
+			return result.toString();
+		}
 	}
 	
+	public static String decrypt(File file, String key) throws Exception{
+		if(key.length() < 32 || key.length() > 448) throw new Exception("Key must be from 32 up to 448 bits of length");
+		
+		String[] p = { "243f6a88", "85a308d3", "13198a2e", "03707344", "a4093822", 
+	            "299f31d0", "082efa98", "ec4e6c89", "452821e6", "38d01377", 
+	            "be5466cf", "34e90c6c", "c0ac29b7", "c97c50dd", "3f84d5b5", 
+	            "b5470917", "9216d5d9", "8979fb1b" };
+		Pbox = p;
+		
+		try(Reader r = new BufferedReader(new InputStreamReader(new FileInputStream(file)))){
+			generateKey(key);
+			
+			StringBuffer result = new StringBuffer();
+			StringBuffer sb = new StringBuffer();
+			
+			int intChar;
+			while((intChar = r.read()) != -1) {
+				sb.append((char) intChar);
+				if(sb.length() == 64 ) {
+					result.append(decrypt(sb.toString()));
+					sb.delete(0, 64);
+				}
+			}
+			
+			return result.toString();
+		}
+	}
 }
