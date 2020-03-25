@@ -467,13 +467,7 @@ public class Blowfish {
 	
 	public static String encrypt(File file, String key) throws Exception{
 		if(key.length() < 32 || key.length() > 448) throw new Exception("Key must be from 32 up to 448 bits of length");
-		
-		String[] p = { "243f6a88", "85a308d3", "13198a2e", "03707344", "a4093822", 
-	            "299f31d0", "082efa98", "ec4e6c89", "452821e6", "38d01377", 
-	            "be5466cf", "34e90c6c", "c0ac29b7", "c97c50dd", "3f84d5b5", 
-	            "b5470917", "9216d5d9", "8979fb1b" };
-		Pbox = p;
-		
+
 		try(InputStream stream = new FileInputStream(file)){
 			generateKey(key);
 			
@@ -504,18 +498,18 @@ public class Blowfish {
 				data = stream.read(array, 0, 8);
 			}
 			
+			String[] p = { "243f6a88", "85a308d3", "13198a2e", "03707344", "a4093822", 
+		            "299f31d0", "082efa98", "ec4e6c89", "452821e6", "38d01377", 
+		            "be5466cf", "34e90c6c", "c0ac29b7", "c97c50dd", "3f84d5b5", 
+		            "b5470917", "9216d5d9", "8979fb1b" };
+			Pbox = p;
+			
 			return result.toString();
 		}
 	}
 	
 	public static String decrypt(File file, String key) throws Exception{
 		if(key.length() < 32 || key.length() > 448) throw new Exception("Key must be from 32 up to 448 bits of length");
-		
-		String[] p = { "243f6a88", "85a308d3", "13198a2e", "03707344", "a4093822", 
-	            "299f31d0", "082efa98", "ec4e6c89", "452821e6", "38d01377", 
-	            "be5466cf", "34e90c6c", "c0ac29b7", "c97c50dd", "3f84d5b5", 
-	            "b5470917", "9216d5d9", "8979fb1b" };
-		Pbox = p;
 		
 		try(Reader r = new BufferedReader(new InputStreamReader(new FileInputStream(file)))){
 			generateKey(key);
@@ -531,6 +525,12 @@ public class Blowfish {
 					sb.delete(0, 64);
 				}
 			}
+			
+			String[] p = { "243f6a88", "85a308d3", "13198a2e", "03707344", "a4093822", 
+		            "299f31d0", "082efa98", "ec4e6c89", "452821e6", "38d01377", 
+		            "be5466cf", "34e90c6c", "c0ac29b7", "c97c50dd", "3f84d5b5", 
+		            "b5470917", "9216d5d9", "8979fb1b" };
+			Pbox = p;
 			
 			return result.toString();
 		}
