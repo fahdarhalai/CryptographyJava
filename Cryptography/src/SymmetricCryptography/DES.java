@@ -74,7 +74,7 @@ public class DES {
 				            19, 13, 30, 6, 
 				            22, 11, 4, 25 };
 	
-	static String IV = "0101010101010101010101010101010101010101010101010101010101010101";
+	static String IV = "0101010101010101010101010101010101010101010101010101010101010110";
 	
 	static class KeyGenerator{
 		//Key Parity Drop with permutation 
@@ -517,6 +517,5 @@ public class DES {
 			
 			return result.toString();
 		}
-	}
-	
+	}	
 }
