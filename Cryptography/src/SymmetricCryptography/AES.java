@@ -63,12 +63,14 @@ public class AES {
 				int s = Integer.parseInt(m, 2) * t;
 				
 				
-				StringBuffer r = new StringBuffer(Integer.toBinaryString(s));
-				for(int j=0; j<q.length()-i-1; j++) {
-					r.append("0");
-				}
+//				StringBuffer r = new StringBuffer(Integer.toBinaryString(s));
+//				for(int j=0; j<q.length()-i-1; j++) {
+//					r.append("0");
+//				}
 				
-				prod ^= Integer.parseInt(r.toString(), 2);
+				prod ^= (int) (s*Math.pow(2, q.length()-i-1));
+				
+//				prod ^= Integer.parseInt(r.toString(), 2);
 				
 			}
 			
@@ -113,12 +115,12 @@ public class AES {
 	
 	public static void main(String[] args) {
 		
-		int a = 0xC6;
-		int b = 0x31;
+		int a = 0x83;
+		int b = 0xC;
 		
 		int prod = GaloisField256.GF256Multiply(a, b);
 		
-		System.out.println(Integer.toBinaryString(prod));
+		System.out.println(prod);
 	}
 	
 }
