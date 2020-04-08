@@ -62,16 +62,7 @@ public class AES {
 				int t = Integer.parseInt(q.charAt(i) + "", 2);
 				int s = Integer.parseInt(m, 2) * t;
 				
-				
-//				StringBuffer r = new StringBuffer(Integer.toBinaryString(s));
-//				for(int j=0; j<q.length()-i-1; j++) {
-//					r.append("0");
-//				}
-				
-				prod ^= (int) (s*Math.pow(2, q.length()-i-1));
-				
-//				prod ^= Integer.parseInt(r.toString(), 2);
-				
+				prod ^= (int) (s * Math.pow(2, q.length()-i-1));
 			}
 			
 			int k = 0;
