@@ -109,6 +109,15 @@ public class TripleDES {
 				sb.append((char) intChar);
 				if(sb.length() == 64 ) {
 
+					if(mode == DecryptMode.DDD3) {
+						result.append(DDD3(sb.toString(), key1, key2, key3));
+					}else if(mode == DecryptMode.DDD2) {
+						result.append(DDD2(sb.toString(), key1, key2));
+					}else if(mode == DecryptMode.DED3) {
+						result.append(DED3(sb.toString(), key1, key2, key3));
+					}else if(mode == DecryptMode.DED2) {
+						result.append(DED2(sb.toString(), key1, key2));
+					}
 					
 					sb.delete(0, 64);
 				}
