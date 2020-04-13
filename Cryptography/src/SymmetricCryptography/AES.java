@@ -1,8 +1,10 @@
 package SymmetricCryptography;
 
+import Tools.Converter;
+
 public class AES {
 	
-	static int[] sbox = {0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+	static int[] sBox = {0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
 	        0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
 	        0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
 	        0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
@@ -19,7 +21,7 @@ public class AES {
 	        0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
 	        0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16};
 	
-	static int[] sboxInv = {
+	static int[] sBoxInv = {
 	        0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
 	        0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
 	        0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
@@ -41,11 +43,11 @@ public class AES {
 	
 	static class GaloisField256 {
 		
-		public static int GF256Add(int aa, int bb) {
+		static int GF256Add(int aa, int bb) {
 			return aa^bb;
 		}
 		
-		public static int GF256Multiply(int aa, int bb) {
+		static int GF256Multiply(int aa, int bb) {
 			String m, q;
 			
 			if(aa > bb) {
@@ -81,14 +83,14 @@ public class AES {
 			return prod;
 		}
 		
-		public static String GF256Add(String a, String b) {
+		static String GF256Add(String a, String b) {
 			int aa = Integer.parseInt(a, 2);
 			int bb = Integer.parseInt(b, 2);
 			
 			return Integer.toBinaryString(GF256Add(aa, bb));
 		}
 		
-		public static String GF256Multiply(String a, String b) {
+		static String GF256Multiply(String a, String b) {
 			int aa = Integer.parseInt(a, 2);
 			int bb = Integer.parseInt(b, 2);
 			
@@ -100,18 +102,140 @@ public class AES {
 	
 	static class KeyGenerator{
 		
+		// g function
+		static String g(String m, int round) throws Exception {
+			if(m.length() != 32) throw new Exception("Operand must be 32 bits of length");
+			
+			// Get the substituted 32 bits using the sBox
+			String res = substitue32(m);
+			
+			// Get the current round constant
+			String Ri = getRC(round);
+			
+			return XOR(res, Ri);
+		}
+		
+		// Get round constant of corresponding round number
+		static String getRC(int round) throws Exception{
+			int R = 0x01;
+			
+			// Calculate the first Byte of the round constant
+			// R(0) = 0x01
+			// R(j) = 0x02 * R(j-1) for j>0
+			for(int i=0; i<round; i++) {
+				R = GaloisField256.GF256Multiply(0x02, R);
+			}
+			
+			// Make the length 8 bits
+			StringBuffer Ri = new StringBuffer(Integer.toBinaryString(R));
+			while(Ri.length() < 8) {
+				Ri.insert(0, "0");
+			}
+			
+			// Append zeros to reach 32 bits of length
+			while(Ri.length() < 32) {
+				Ri.append("0");
+			}
+			
+			return Ri.toString();
+		}
+		
+		// Get next key knowing the previous key & current round
+		static String getNextKey(String prev, int round) throws Exception{
+			if(prev.length() != 128) throw new Exception("Previous key must be 128 bits of length");
+			
+			StringBuffer newKey = new StringBuffer();
+			
+			// Split the key
+			String[] subKeys = splitTo4(prev);
+			
+			// Use g function on the 4th substring of key
+			String gOutput = g(subKeys[3], round);
+			
+			// Just some sequential XOR-ing
+			newKey.append(XOR(subKeys[0], gOutput));
+			newKey.append(XOR(newKey.substring(0, 32), subKeys[1]));
+			newKey.append(XOR(newKey.substring(32, 64), subKeys[2]));
+			newKey.append(XOR(newKey.substring(64, 96), subKeys[3]));
+			
+			return newKey.toString();
+		}
 		
 	}
 	
+	// Split to four words
+	static String[] splitTo4(String A) throws Exception {
+		if(A.length() != 128) throw new Exception("Operand must be 128 bits of length");
+		
+		String[] subKeys = new String[4];
+		
+		subKeys[0] = A.substring(0, 32);
+		subKeys[1] = A.substring(32, 64);
+		subKeys[2] = A.substring(64, 96);
+		subKeys[3] = A.substring(96, 128);
+		
+		return subKeys;
+	}
 	
-	public static void main(String[] args) {
+	// Just XOR-ing
+	static String XOR(String a, String b) throws Exception {
+		if(a.length() != b.length()) throw new Exception("Operands must be of same length");
 		
-		int a = 0x83;
-		int b = 0xC;
+		StringBuffer result = new StringBuffer();
 		
-		int prod = GaloisField256.GF256Multiply(a, b);
+		for(int i=0; i<a.length(); i++) {
+			result.append(a.charAt(i)^b.charAt(i));
+		}
 		
-		System.out.println(prod);
+		return result.toString();
+	}
+	
+	// Substitute a byte using the sBox
+	public static String substitueByte(String A) throws Exception {
+		if(A.length() != 8) throw new Exception("Operand must be 8 bits of length");
+		
+		// Get row & col values
+		int row = Integer.parseInt(A.substring(0,4), 2);
+		int col = Integer.parseInt(A.substring(4,8), 2);
+		
+		// Calculate the result
+		int res = sBox[row*16 + col];
+		
+		StringBuffer result = new StringBuffer(Integer.toBinaryString(res));
+		
+		// Adjusting the length to match 8 bits
+		while(result.length() < 8) {
+			result.insert(0, "0");
+		}
+		
+		return result.toString();
+	}
+	
+	// Substitute 32 bits using the sBox
+	static String substitue32(String A) throws Exception {
+		if(A.length() != 32) throw new Exception("Operand must be 32 bits of length");
+		
+		StringBuffer result = new StringBuffer();
+		
+		// Substitute each Byte alone and appending it to the result string
+		for(int i=0; i<32; i+=8) {
+			String x = A.substring(i, i+8);
+			result.append(substitueByte(x));
+		}
+		
+		return result.toString();
+	}
+	
+	
+	
+	public static void main(String[] args) throws Exception{
+		String key = "00010001001010000011100011100000000100111111011111100011010110010010010101010100100000110010111101000110011100111101100000110001";		
+		
+		for(int i=0; i<10; i++) {
+			key = KeyGenerator.getNextKey(key, i);
+			System.out.println(key);
+		}
+		
 	}
 	
 }
