@@ -1,5 +1,8 @@
 package SymmetricCryptography;
 
+import java.awt.RenderingHints.Key;
+import java.io.ObjectInputStream.GetField;
+
 import Tools.Converter;
 
 public class AES {
@@ -41,6 +44,11 @@ public class AES {
 
 	static int IrrPoly = 0x11B;
 	
+	static int[] mixColMat = {0x02, 0x03, 0x01, 0x01,
+							0x01, 0x02, 0x03, 0x01,
+							0x01, 0x01, 0x02, 0x03,
+							0x03, 0x01, 0x01, 0x02};
+	
 	static class GaloisField256 {
 		
 		static int GF256Add(int aa, int bb) {
@@ -58,18 +66,31 @@ public class AES {
 				q = Integer.toBinaryString(aa);
 			}
 			
+			while(m.length() < 8) {
+				m = "0" + m;
+			}
+			
+			while(q.length() < 8) {
+				q = "0" + q;
+			}
+			
 			int prod = 0x00;
 			
 			for(int i=0; i<q.length(); i++) {
 				int t = Integer.parseInt(q.charAt(i) + "", 2);
 				int s = Integer.parseInt(m, 2) * t;
 				
-				prod ^= (int) (s * Math.pow(2, q.length()-i-1));
+				prod = prod ^ (int) (s * Math.pow(2, q.length()-i-1));
 			}
 			
 			int k = 0;
 			int mult = 1;
-			while((mult=prod/IrrPoly) != 0) {
+			while(prod >= 256) {
+				if(prod < IrrPoly) {
+					mult = 1;
+				}else {
+					mult = prod/IrrPoly;
+				}
 				k=0;
 				
 				while((mult/=2) > 0) {
@@ -97,6 +118,34 @@ public class AES {
 			int prod = GF256Multiply(aa, bb);
 			
 			return Integer.toBinaryString(prod);
+		}
+	
+		static String GF256MatrixMult(int[] A, int[] B) throws Exception {
+			if(A.length != B.length) throw new Exception("Matrices are not of correct length in this context");
+			
+			int len = (int) Math.sqrt(A.length);
+			int[] C = new int[A.length];
+			
+			for(int i=0; i<len; i++) {
+				for(int j=0; j<len; j++) {
+					for(int k=0; k<len; k++) {
+						C[i*len + j] = GaloisField256.GF256Add(C[i*len + j], GaloisField256.GF256Multiply(A[i*len + k], B[k*len + j]));
+					}
+				}
+			}
+			
+			StringBuffer result = new StringBuffer();
+			for(int i=0; i<16; i++) {
+				StringBuffer helper = new StringBuffer(Integer.toBinaryString(C[i]));
+				
+				while(helper.length() < 8) {
+					helper.insert(0, "0");
+				}
+				
+				result.append(helper);
+			}
+			
+			return result.toString();
 		}
 	}
 	
@@ -163,20 +212,6 @@ public class AES {
 		
 	}
 	
-	// Split to four words
-	static String[] splitTo4(String A) throws Exception {
-		if(A.length() != 128) throw new Exception("Operand must be 128 bits of length");
-		
-		String[] subKeys = new String[4];
-		
-		subKeys[0] = A.substring(0, 32);
-		subKeys[1] = A.substring(32, 64);
-		subKeys[2] = A.substring(64, 96);
-		subKeys[3] = A.substring(96, 128);
-		
-		return subKeys;
-	}
-	
 	// Just XOR-ing
 	static String XOR(String a, String b) throws Exception {
 		if(a.length() != b.length()) throw new Exception("Operands must be of same length");
@@ -188,6 +223,21 @@ public class AES {
 		}
 		
 		return result.toString();
+	}
+	
+	// Split 128 into four parts
+	static String[] splitTo4(String A) throws Exception {
+		if(A.length()%4 != 0) throw new Exception("Operand must be multiple of 4");
+		int len = A.length()/4;
+		
+		String[] subKeys = new String[4];
+		
+		subKeys[0] = A.substring(0, len);
+		subKeys[1] = A.substring(len, len*2);
+		subKeys[2] = A.substring(len*2, len*3);
+		subKeys[3] = A.substring(len*3, len*4);
+		
+		return subKeys;
 	}
 	
 	// Substitute a byte using the sBox
@@ -226,16 +276,123 @@ public class AES {
 		return result.toString();
 	}
 	
-	
-	
-	public static void main(String[] args) throws Exception{
-		String key = "00010001001010000011100011100000000100111111011111100011010110010010010101010100100000110010111101000110011100111101100000110001";		
+	// Substitue the entire 128 bits bloc using the sBox 
+	static String substitue128(String bloc) throws Exception{
+		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
 		
-		for(int i=0; i<10; i++) {
-			key = KeyGenerator.getNextKey(key, i);
-			System.out.println(key);
+		StringBuffer result = new StringBuffer();
+		
+		for(int i=0; i<128; i+=32) {
+			result.append(substitue32(bloc.substring(i, i+32)));
 		}
 		
+		return result.toString();
+	}
+	
+	// Shift one row
+	static String shiftOneRow(String row, int index) throws Exception{
+		if(row.length() != 32) throw new Exception("Operand must be 32 bits of length");
+		
+		StringBuffer result = new StringBuffer();
+		String[] rowParts = splitTo4(row);
+		
+		for(int i=index; i<index+4; i++) {
+			result.append(rowParts[i%4]);
+		}
+		
+		return result.toString();
+	}
+	
+	// Shift the rows of the entire bloc
+	static String shiftRows(String bloc) throws Exception{
+		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
+		
+		StringBuffer result = new StringBuffer();
+		int index = 0;
+		while(index < 4) {
+			StringBuffer row = new StringBuffer();
+			for(int i=index*8; i<128; i+=32) {
+				row.append(bloc.substring(i, i+8));
+			}
+			String newRow = shiftOneRow(row.toString(), index);
+			
+			int step = 8;
+			for(int i=0; i<32; i+=8) {
+				int k = i/8;
+				result.insert(k*8 + index*step, newRow.substring(i, i+8));
+				step += 8;
+			}
+			
+			index++;
+		}
+		
+		return result.toString();
+	}
+	
+	// Mixing columns
+	static String mixCols(String bloc) throws Exception{
+		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
+		
+		int[] array = new int[16];
+		int index = 0;
+		int j = 0;
+		while(index < 4) {
+			for(int i=index*8; i<128; i+=32) {
+				array[j] = Integer.parseInt(bloc.substring(i, i+8), 2);
+				j++;
+			}
+			index++;
+		}
+		
+		String result = GaloisField256.GF256MatrixMult(mixColMat, array);
+		
+		StringBuffer out = new StringBuffer();
+		index = 0;
+		while(index < 4) {
+			for(int i=index*8; i<128; i+=32) {
+				out.append(result.substring(i, i+8));
+			}
+			
+			index++;
+		}
+		return out.toString();
+	}
+	
+	static String encryptRound(String bloc) throws Exception{
+		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
+		
+		bloc = substitue128(bloc);
+		bloc = shiftRows(bloc);
+		bloc = mixCols(bloc);
+		
+		return bloc;
+	}
+	
+	static String encrypt(String bloc, String key) throws Exception{
+		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
+		if(key.length() != 128) throw new Exception("Key must be 128 bits of length");
+		
+		bloc = XOR(bloc, key);
+		
+		for(int i=0; i<9; i++) {
+			key = KeyGenerator.getNextKey(key, i);
+			bloc = encryptRound(bloc);
+			bloc = XOR(bloc, key);
+		}
+		
+		key = KeyGenerator.getNextKey(key, 9);
+		bloc = substitue128(bloc);
+		bloc = shiftRows(bloc);
+		bloc = XOR(bloc, key);
+		
+		return bloc;
+	}
+	
+	public static void main(String[] args) throws Exception{
+		String key = "01100101011011100111001101100001001000000110010001100101001000000110101101100101011011100110100101110100011100100110000100101110";		
+		String bloc = "01100101011011100111001101100001001000000110010001100101001000000110101101100101011011100110100101110100011100100110000100101110";
+		
+		System.out.println(encrypt(bloc, key));
 	}
 	
 }
