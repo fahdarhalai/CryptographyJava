@@ -1,8 +1,5 @@
 package SymmetricCryptography;
 
-import java.awt.RenderingHints.Key;
-import java.io.ObjectInputStream.GetField;
-
 import Tools.Converter;
 
 public class AES {
@@ -51,23 +48,11 @@ public class AES {
 			0x01, 0x01, 0x02, 0x03,
 			0x03, 0x01, 0x01, 0x02};
 	
-	static int[] Rcon = {
-			0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a, 
-			0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91, 0x39, 
-			0x72, 0xe4, 0xd3, 0xbd, 0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 
-			0x74, 0xe8, 0xcb, 0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 
-			0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 
-			0xc5, 0x91, 0x39, 0x72, 0xe4, 0xd3, 0xbd, 0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 
-			0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb, 0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 
-			0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 
-			0x7d, 0xfa, 0xef, 0xc5, 0x91, 0x39, 0x72, 0xe4, 0xd3, 0xbd, 0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 
-			0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb, 0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 
-			0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc, 0x63, 0xc6, 0x97, 0x35, 
-			0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91, 0x39, 0x72, 0xe4, 0xd3, 0xbd, 0x61, 0xc2, 0x9f, 
-			0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb, 0x8d, 0x01, 0x02, 0x04, 
-			0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a, 0x2f, 0x5e, 0xbc, 0x63, 
-			0xc6, 0x97, 0x35, 0x6a, 0xd4, 0xb3, 0x7d, 0xfa, 0xef, 0xc5, 0x91, 0x39, 0x72, 0xe4, 0xd3, 0xbd, 
-			0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb};
+	static int[] invMixColMat = {
+			0x0E, 0x0B, 0x0D, 0x09,
+			0x09, 0x0E, 0x0B, 0x0D,
+			0x0D, 0x09, 0x0E, 0x0B,
+			0x0B, 0x0D, 0x09, 0x0E};
 	
 	static class GaloisField256 {
 		
@@ -183,12 +168,34 @@ public class AES {
 			}
 			
 			// Get the substituted 32 bits using the sBox
-			String res = substitue32(shifted.toString());
+			String res = substitute32(shifted.toString());
 			
 			// Get the current round constant
 			String Ri = getRC(round);
 
 			return XOR(res, Ri);
+		}
+		
+		// g inverse function
+		static String gInv(String m, int round) throws Exception{
+			if(m.length() != 32) throw new Exception("Operand must be 32 bits of length");
+			
+			// Get the current round constant
+			String Ri = getRC(round);
+			
+			String res = XOR(m, Ri);
+			
+			// Get the substituted 32 bits using the sBox
+			res = substitute32Inv(res);
+			
+			// Circular byte left shift
+			StringBuffer shifted = new StringBuffer();
+			for(int i=0; i<32; i+=8) {
+				int j = (i - 8+32)%32;
+				shifted.append(res.substring(j, j+8));
+			}
+
+			return shifted.toString();
 		}
 		
 		// Get round constant of corresponding round number
@@ -216,14 +223,14 @@ public class AES {
 			return Ri.toString();
 		}
 		
-		// Get next key knowing the previous key & current round
-		static String getNextKey(String prev, int round) throws Exception{
-			if(prev.length() != 128) throw new Exception("Previous key must be 128 bits of length");
+		// Get next key knowing the current key & current round
+		static String getNextKey(String curr, int round) throws Exception{
+			if(curr.length() != 128) throw new Exception("Previous key must be 128 bits of length");
 			
 			StringBuffer newKey = new StringBuffer();
 			
 			// Split the key
-			String[] subKeys = splitTo4(prev);
+			String[] subKeys = splitTo4(curr);
 			
 			// Use g function on the 4th substring of key
 			String gOutput = g(subKeys[3], round);
@@ -236,6 +243,27 @@ public class AES {
 			
 			return newKey.toString();
 		}	
+		
+		// Get previous key knowing the current key & current round
+		static String getPrevKey(String curr, int round) throws Exception{
+			if(curr.length() != 128) throw new Exception("Previous key must be 128 bits of length");
+			
+			StringBuffer newKey = new StringBuffer();
+			
+			// Split the key
+			String[] subKeys = splitTo4(curr);
+			
+			// Just some sequential XOR-ing
+			newKey.insert(0, XOR(subKeys[2], subKeys[3]));
+			newKey.insert(0, XOR(subKeys[1], subKeys[2]));
+			newKey.insert(0, XOR(subKeys[0], subKeys[1]));
+			
+			// Use g function on the 4th substring of key
+			String gOutput = g(newKey.substring(64, 96), round);
+			newKey.insert(0, XOR(gOutput, subKeys[0]));
+			
+			return newKey.toString();
+		}
 	}
 	
 	// Just XOR-ing
@@ -267,7 +295,7 @@ public class AES {
 	}
 	
 	// Substitute a byte using the sBox
-	public static String substitueByte(String A) throws Exception {
+	static String substituteByte(String A) throws Exception {
 		if(A.length() != 8) throw new Exception("Operand must be 8 bits of length");
 		
 		// Get row & col values
@@ -287,8 +315,29 @@ public class AES {
 		return result.toString();
 	}
 	
+	// Substitute a byte using inverse sBox
+	static String substituteByteInv(String A) throws Exception{
+		if(A.length() != 8) throw new Exception("Operand must be 8 bits of length");
+		
+		// Get row & col values
+		int row = Integer.parseInt(A.substring(0,4), 2);
+		int col = Integer.parseInt(A.substring(4,8), 2);
+		
+		// Calculate the result
+		int res = sBoxInv[row*16 + col];
+		
+		StringBuffer result = new StringBuffer(Integer.toBinaryString(res));
+		
+		// Adjusting the length to match 8 bits
+		while(result.length() < 8) {
+			result.insert(0, "0");
+		}
+		
+		return result.toString();
+	}
+	
 	// Substitute 32 bits using the sBox
-	static String substitue32(String A) throws Exception {
+	static String substitute32(String A) throws Exception {
 		if(A.length() != 32) throw new Exception("Operand must be 32 bits of length");
 		
 		StringBuffer result = new StringBuffer();
@@ -296,20 +345,48 @@ public class AES {
 		// Substitute each Byte alone and appending it to the result string
 		for(int i=0; i<32; i+=8) {
 			String x = A.substring(i, i+8);
-			result.append(substitueByte(x));
+			result.append(substituteByte(x));
 		}
 		
 		return result.toString();
 	}
 	
-	// Substitue the entire 128 bits bloc using the sBox 
-	static String substitue128(String bloc) throws Exception{
+	// Substitute 32 bits using the inverse sBox
+	static String substitute32Inv(String A) throws Exception{
+		if(A.length() != 32) throw new Exception("Operand must be 32 bits of length");
+		
+		StringBuffer result = new StringBuffer();
+		
+		// Substitute each Byte alone and appending it to the result string
+		for(int i=0; i<32; i+=8) {
+			String x = A.substring(i, i+8);
+			result.append(substituteByteInv(x));
+		}
+		
+		return result.toString();
+	}
+	
+	// Substitute 128 bits bloc using the sBox 
+	static String substitute128(String bloc) throws Exception{
 		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
 		
 		StringBuffer result = new StringBuffer();
 		
 		for(int i=0; i<128; i+=32) {
-			result.append(substitue32(bloc.substring(i, i+32)));
+			result.append(substitute32(bloc.substring(i, i+32)));
+		}
+		
+		return result.toString();
+	}
+	
+	// Substitute 128 bits bloc using the inverse sBox 
+	static String substitute128Inv(String bloc) throws Exception{
+		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
+		
+		StringBuffer result = new StringBuffer();
+		
+		for(int i=0; i<128; i+=32) {
+			result.append(substitute32Inv(bloc.substring(i, i+32)));
 		}
 		
 		return result.toString();
@@ -329,7 +406,21 @@ public class AES {
 		return result.toString();
 	}
 	
-	// Shift the rows of the entire bloc
+	// Unshift one row
+	static String unshiftOneRow(String row, int index) throws Exception{
+		if(row.length() != 32) throw new Exception("Operand must be 32 bits of length");
+		
+		StringBuffer result = new StringBuffer();
+		String[] rowParts = splitTo4(row);
+		
+		for(int i=-index; i<-index+4; i++) {
+			result.append(rowParts[(i+4)%4]);
+		}
+		
+		return result.toString();
+	}
+	
+	// Shift the rows of the bloc
 	static String shiftRows(String bloc) throws Exception{
 		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
 		
@@ -341,6 +432,32 @@ public class AES {
 				row.append(bloc.substring(i, i+8));
 			}
 			String newRow = shiftOneRow(row.toString(), index);
+			
+			int step = 8;
+			for(int i=0; i<32; i+=8) {
+				int k = i/8;
+				result.insert(k*8 + index*step, newRow.substring(i, i+8));
+				step += 8;
+			}
+			
+			index++;
+		}
+		
+		return result.toString();
+	}
+	
+	// Unshift the rows of the bloc
+	static String unshiftRows(String bloc) throws Exception{
+		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
+		
+		StringBuffer result = new StringBuffer();
+		int index = 0;
+		while(index < 4) {
+			StringBuffer row = new StringBuffer();
+			for(int i=index*8; i<128; i+=32) {
+				row.append(bloc.substring(i, i+8));
+			}
+			String newRow = unshiftOneRow(row.toString(), index);
 			
 			int step = 8;
 			for(int i=0; i<32; i+=8) {
@@ -385,16 +502,61 @@ public class AES {
 		return out.toString();
 	}
 	
-	static String encryptRound(String bloc) throws Exception{
+	// Inverse mixcols
+	static String mixColsInv(String bloc) throws Exception{
 		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
 		
-		bloc = substitue128(bloc);
+		int[] array = new int[16];
+		int index = 0;
+		int j = 0;
+		
+		while(index < 4) {
+			for(int i=index*8; i<128; i+=32) {
+				array[j] = Integer.parseInt(bloc.substring(i, i+8), 2);
+				j++;
+			}
+			index++;
+		}
+		
+		String result = GaloisField256.GF256MatrixMult(invMixColMat, array);
+		
+		StringBuffer out = new StringBuffer();
+		index = 0;
+		while(index < 4) {
+			for(int i=index*8; i<128; i+=32) {
+				out.append(result.substring(i, i+8));
+			}
+			
+			index++;
+		}
+		return out.toString();
+	}
+	
+	// Encrypt one round
+	static String encryptRound(String bloc, String key) throws Exception{
+		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
+		
+		bloc = substitute128(bloc);
 		bloc = shiftRows(bloc);
 		bloc = mixCols(bloc);
+		bloc = XOR(bloc, key);
 		
 		return bloc;
 	}
 	
+	// Decrypt one round
+	static String decryptRound(String bloc, String key) throws Exception{
+		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
+		
+		bloc = unshiftRows(bloc);
+		bloc = substitute128Inv(bloc);
+		bloc = XOR(bloc, key);
+		bloc = mixColsInv(bloc);
+		
+		return bloc;
+	}
+	
+	// Encrypt
 	static String encrypt(String bloc, String key) throws Exception{
 		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
 		if(key.length() != 128) throw new Exception("Key must be 128 bits of length");
@@ -403,23 +565,49 @@ public class AES {
 		
 		for(int i=0; i<9; i++) {
 			key = KeyGenerator.getNextKey(key, i);
-			bloc = encryptRound(bloc);
-			bloc = XOR(bloc, key);
+			bloc = encryptRound(bloc, key);
 		}
 		
 		key = KeyGenerator.getNextKey(key, 9);
-		bloc = substitue128(bloc);
+		bloc = substitute128(bloc);
 		bloc = shiftRows(bloc);
 		bloc = XOR(bloc, key);
 		
 		return bloc;
 	}
 	
+	// Decrypt
+	static String decrypt(String bloc, String key) throws Exception{
+		if(bloc.length() != 128) throw new Exception("Bloc must be 128 bits of length");
+		if(key.length() != 128) throw new Exception("Key must be 128 bits of length");
+		
+		for(int i=0; i<10; i++) {
+			key = KeyGenerator.getNextKey(key, i);
+		}
+		
+		bloc = XOR(bloc, key);
+		
+		for(int i=9; i>0; i--) {
+			key = KeyGenerator.getPrevKey(key, i);
+			bloc = decryptRound(bloc, key);
+		}
+		
+		key = KeyGenerator.getPrevKey(key, 0);
+		bloc = unshiftRows(bloc);
+		bloc = substitute128Inv(bloc);
+		bloc = XOR(bloc, key);
+		
+		return bloc;
+	}
+	
 	public static void main(String[] args) throws Exception{
-		String key = "01100101011011100111001101100001001000000110010001100101001000000110101101100101011011100110100101110100011100100110000100101110";		
+		String key = "01100101011011100111001101100001001000000110010001100101001000000110101101100101011000001100100101110100011100100110000100101110";		
 		String bloc = "01100101011011100111001101100001001000000110010001100101001000000110101101100101011011100110100101110100011100100110000100101110";		
 		
-		System.out.println(Converter.binaryToHex(encrypt(bloc, key)));
+		String cipher = encrypt(bloc, key);
+		String plain = decrypt(cipher, key);
+		
+		System.out.println(Converter.binaryToString(plain));
 	}
 	
 }
